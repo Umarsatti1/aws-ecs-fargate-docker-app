@@ -1,0 +1,36 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      # Print Docker version
+      - echo Logging in to Amazon Elastic Container Registry...
+      # Get the login command from ECR 'View Push Commands'
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 730335208305.dkr.ecr.us-east-1.amazonaws.com
+      # Get the Repository URI from ECR
+      - REPOSITORY_URI=730335208305.dkr.ecr.us-east-1.amazonaws.com/python-docker-app
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      # Print environment variables
+      - echo Build started on `date`
+      - echo Building the Docker image...
+
+  build:
+    commands:
+      # Build the Docker image using the Dockerfile in the repository
+      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+      # Tag the Docker image with "latest"
+      - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
+
+  post_build:
+    commands:
+      # Push both tags (specific commit and latest) to ECR
+      - echo Pushing the Docker image to ECR...
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:latest
+      - echo Build completed on `date`
+
+artifacts:
+  files:
+    - app.py
+    - Dockerfile
+  discard-paths: yes
